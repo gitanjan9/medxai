@@ -1,0 +1,83 @@
+experiment:
+  name: mimic_cxr_v2_efficientnet_b3
+  seed: 42
+  output_dir: artifacts/v2
+
+data:
+  mode: image
+  train_path: /Users/gitanjanganai/Downloads/mimic_cxr_processed.csv
+  val_path: artifacts/val_split.csv
+  test_path: artifacts/val_split.csv
+  val_split: 0.15
+  image_col: image
+  label_col: impression
+  text_col: findings
+  patient_id_col: null
+  image_size: [320, 320]          # higher resolution for subtle CXR differences
+  num_workers: 0
+  pin_memory: true
+  label_mapping_path: artifacts/v2/label_map.json
+  label_map_csv: null
+  class_merge_map_path: artifacts/class_merge_map.json   # 16 → 5 classes
+
+model:
+  architecture: efficientnet_b3   # ~12M params, strong ImageNet→CXR transfer
+  spatial_dims: 2
+  in_channels: 1
+  num_classes: 5
+  pretrained: true
+  dropout_rate: 0.3
+  freeze_backbone: false
+
+training:
+  epochs: 60
+  batch_size: 16
+  learning_rate: 5.0e-5            # lower base LR for larger model
+  weight_decay: 1.0e-4
+  use_amp: true
+  grad_clip_norm: 1.0
+  class_balance_strategy: class_balanced_focal   # focal + class weights
+  focal_gamma: 2.0
+  freeze_epochs: 5                 # head-only warmup
+  backbone_lr_scale: 0.1           # backbone: 5e-6, head: 5e-5
+
+early_stopping:
+  enabled: true
+  patience: 10
+  monitor: val_auroc_macro
+  mode: max
+  min_delta: 1.0e-4
+
+optimizer:
+  name: adamw
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+  momentum: 0.9
+
+scheduler:
+  name: cosine_annealing_warm_restarts
+  T_0: 10
+  T_mult: 2
+  T_max: 60
+  eta_min: 1.0e-7
+  step_size: 10
+  gamma: 0.1
+
+checkpoint:
+  dir: artifacts/v2/checkpoints
+  save_top_k: 3
+  monitor: val_auroc_macro
+  mode: max
+  filename_template: "epoch={epoch:03d}_val_auroc_macro={val_auroc_macro:.4f}"
+
+mlflow:
+  tracking_uri: sqlite:///mlruns/mlflow.db
+  experiment_name: mimic_cxr_v2
+  run_name: null
+  log_model_artifact: true
+  artifact_path: model
+
+bundle:
+  name: mimic_cxr_classifier
+  bundle_root: bundles/classifier_bundle
+  version: "0.2.0"

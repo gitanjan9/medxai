@@ -1,0 +1,8 @@
+thresholds:
+  method: ppv_recall_balanced
+  target_ppv: 0.65
+  target_recall: 0.70
+  default_low: 0.25
+  default_high: 0.65
+  output_path: artifacts/thresholds.json
+  review_band_enabled: true

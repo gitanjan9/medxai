@@ -1,0 +1,49 @@
+{
+  "method": "ppv_recall_balanced",
+  "target_ppv": 0.65,
+  "target_recall": 0.7,
+  "num_samples": 285,
+  "val_csv": "artifacts/val_split.csv",
+  "thresholds": [
+    {
+      "class_idx": 0,
+      "class_name": "no_acute_cardiopulmonary",
+      "low": 0.2463819095477387,
+      "high": 0.6895979899497487,
+      "ppv_at_high": 1.0,
+      "recall_at_low": 0.7028571428571428
+    },
+    {
+      "class_idx": 1,
+      "class_name": "no_acute_intrathoracic",
+      "low": 0.3448743718592965,
+      "high": 0.8718090452261307,
+      "ppv_at_high": 1.0,
+      "recall_at_low": 0.7096774193548387
+    },
+    {
+      "class_idx": 2,
+      "class_name": "no_change_stable",
+      "low": 0.6698994974874373,
+      "high": 0.9752261306532664,
+      "ppv_at_high": 1.0,
+      "recall_at_low": 0.711864406779661
+    },
+    {
+      "class_idx": 3,
+      "class_name": "no_pneumonia",
+      "low": 0.8619597989949749,
+      "high": 0.9801507537688443,
+      "ppv_at_high": 1.0,
+      "recall_at_low": 0.7692307692307693
+    },
+    {
+      "class_idx": 4,
+      "class_name": "no_pneumothorax",
+      "low": 0.9801507537688443,
+      "high": 0.99,
+      "ppv_at_high": 1.0,
+      "recall_at_low": 0.8571428571428571
+    }
+  ]
+}

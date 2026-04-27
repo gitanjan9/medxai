@@ -1,0 +1,38 @@
+# MONAI Bundle-compatible training config stub.
+# This file mirrors configs/train.yaml and is kept here so the bundle
+# can be self-contained for packaging and sharing via the MONAI Model Zoo.
+#
+# To run via the bundle directly:
+#   python -m monai.bundle run --config_file bundles/classifier_bundle/configs/train.yaml
+#
+# Reference the top-level train.yaml for the authoritative parameter set.
+
+bundle_root: bundles/classifier_bundle
+
+imports:
+  - "$import os"
+
+device: "$torch.device('cuda' if torch.cuda.is_available() else 'cpu')"
+
+num_classes: 17
+image_size: [224, 224]
+batch_size: 32
+learning_rate: 1.0e-4
+max_epochs: 50
+
+network_def:
+  _target_: monai.networks.nets.DenseNet121
+  spatial_dims: 2
+  in_channels: 1
+  out_channels: "$num_classes"
+  dropout_prob: 0.3
+
+network: "$network_def.to(device)"
+
+optimizer_def:
+  _target_: torch.optim.AdamW
+  params: "$network.parameters()"
+  lr: "$learning_rate"
+  weight_decay: 1.0e-5
+
+optimizer: "$optimizer_def"

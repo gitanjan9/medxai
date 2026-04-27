@@ -1,0 +1,72 @@
+experiment:
+  name: mimic_cxr_v3_multilabel_efficientnet_b3
+  seed: 42
+  output_dir: artifacts/v3
+
+data:
+  mode: image
+  task: multilabel                              # switches to multi-label BCE path
+  train_path: artifacts/v3_disease_labels.csv   # produced by prepare_v3_labels.py
+  val_path: null                                # auto 15% split
+  val_split: 0.15
+  image_col: image
+  image_size: [320, 320]
+  num_workers: 0
+  pin_memory: true
+  # label_cols: null means all 15 PATHOLOGY_CLASSES are used automatically
+
+model:
+  architecture: efficientnet_b3
+  spatial_dims: 2
+  in_channels: 1
+  num_classes: 15                               # set automatically from label_cols at runtime
+  pretrained: true
+  dropout_rate: 0.3
+  freeze_backbone: false
+
+training:
+  epochs: 40                                    # early stopping will fire at ~25-32 anyway
+  batch_size: 32                                # halves steps/epoch (746 → 373), same gradient quality
+  learning_rate: 5.0e-5
+  weight_decay: 1.0e-4
+  use_amp: true
+  grad_clip_norm: 1.0
+  class_balance_strategy: multilabel_bce_focal
+  freeze_epochs: 3                              # 3 head-only epochs is enough for fine-tuning
+  backbone_lr_scale: 0.1
+
+early_stopping:
+  enabled: true
+  patience: 8                                   # tighter – stops 2 epochs sooner when plateau hit
+  monitor: val_auroc_macro
+  mode: max
+  min_delta: 1.0e-4
+
+optimizer:
+  name: adamw
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+
+scheduler:
+  name: cosine_annealing                        # single smooth decay → better for fine-tuning
+  T_max: 37                                     # = epochs - freeze_epochs; full LR range used once
+  eta_min: 1.0e-7
+
+checkpoint:
+  dir: artifacts/v3/checkpoints
+  save_top_k: 3
+  monitor: val_auroc_macro
+  mode: max
+  filename_template: "epoch={epoch:03d}_val_auroc_macro={val_auroc_macro:.4f}"
+
+mlflow:
+  tracking_uri: sqlite:///mlruns/mlflow.db
+  experiment_name: mimic_cxr_v3
+  run_name: null
+  log_model_artifact: true
+  artifact_path: model
+
+bundle:
+  name: mimic_cxr_classifier
+  bundle_root: bundles/classifier_bundle
+  version: "0.3.0"

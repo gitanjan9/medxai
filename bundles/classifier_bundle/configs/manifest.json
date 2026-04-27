@@ -1,0 +1,11 @@
+{
+  "bundle_name": "mimic_cxr_classifier",
+  "version": "0.2.0",
+  "artifacts": {
+    "label_map": "bundles/classifier_bundle/configs/label_map.json",
+    "calibration": "bundles/classifier_bundle/configs/calibration.json",
+    "thresholds": "bundles/classifier_bundle/configs/thresholds.json",
+    "inference": "bundles/classifier_bundle/configs/inference.yaml",
+    "model": "bundles/classifier_bundle/models/best_checkpoint.pt"
+  }
+}

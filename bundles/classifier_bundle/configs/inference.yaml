@@ -1,0 +1,43 @@
+model:
+  architecture: densenet121
+  spatial_dims: 2
+  in_channels: 1
+  num_classes: 16
+  pretrained: false
+  dropout_rate: 0.3
+  freeze_backbone: false
+
+data:
+  mode: image
+  train_path: /Users/gitanjanganai/Downloads/mimic_cxr_processed.csv
+  val_path: artifacts/val_split.csv
+  test_path: artifacts/val_split.csv
+  image_col: image
+  label_col: impression
+  text_col: findings
+  image_size: [224, 224]
+  num_workers: 0
+  pin_memory: true
+  label_mapping_path: artifacts/label_map.json
+
+checkpoint_path: null   # null = auto-detect best in artifacts/checkpoints/
+label_map_path: artifacts/label_map.json
+calibration_path: artifacts/calibration.json
+thresholds_path: artifacts/thresholds.json
+
+explainability:
+  method: gradcam
+  target_layer: features.denseblock4
+  output_dir: artifacts/explanations
+  save_heatmaps: true
+  max_samples: null    # null = all val samples
+
+review:
+  confidence_threshold: 0.5
+  require_explanation: true
+  flag_weak_calibration: true
+
+bundle:
+  name: mimic_cxr_classifier
+  bundle_root: bundles/classifier_bundle
+  version: "0.2.0"

@@ -1,0 +1,28 @@
+# Model-level configuration (imported by train.yaml)
+
+densenet121:
+  architecture: densenet121
+  spatial_dims: 2
+  in_channels: 1
+  num_classes: 17
+  pretrained: true
+  dropout_rate: 0.3
+  freeze_backbone: false
+
+efficientnet_b0:
+  architecture: efficientnet_b0
+  spatial_dims: 2
+  in_channels: 1
+  num_classes: 17
+  pretrained: true
+  dropout_rate: 0.2
+  freeze_backbone: false
+
+resnet50:
+  architecture: resnet50
+  spatial_dims: 2
+  in_channels: 1
+  num_classes: 17
+  pretrained: true
+  dropout_rate: 0.3
+  freeze_backbone: false

@@ -1,0 +1,17 @@
+stage1:
+  checkpoint_dir: artifacts/stage1/checkpoints
+  label_map:      artifacts/stage1/label_map.json
+  calibration:    artifacts/stage1/calibration.json
+
+stage2:
+  checkpoint_dir: artifacts/stage2/checkpoints
+  label_map:      artifacts/stage2/label_map.json
+  calibration:    artifacts/stage2/calibration.json   # written after stage2 calibrate
+
+model:
+  architecture: densenet121
+
+server:
+  host: 0.0.0.0
+  port: 8000
+  workers: 1

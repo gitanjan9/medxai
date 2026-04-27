@@ -1,0 +1,132 @@
+version: "3.9"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# MedicalXAI – production docker-compose
+#
+# Services:
+#   frontend – React SPA served by nginx (port 80)
+#   api      – FastAPI + Gunicorn inference server
+#   postgres – Structured storage (users, audit, predictions)
+#   redis    – Rate limiting / session cache
+#
+# Usage:
+#   cp deployment/.env.example .env   # fill in secrets
+#   docker compose -f deployment/docker-compose.yml up --build -d
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Frontend (nginx + React build) ───────────────────────────────────────
+  frontend:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.frontend
+    image: medicalxai-frontend:latest
+    container_name: medxai_frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      - api
+    networks:
+      - medxai_net
+
+  # ── Backend API (FastAPI + Gunicorn) ─────────────────────────────────────
+  api:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.api
+    image: medicalxai-api:latest
+    container_name: medxai_api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8000}:8000"
+    env_file:
+      - ../.env
+    environment:
+      MEDXAI_CHECKPOINT:    /app/artifacts/v2/checkpoints
+      MEDXAI_LABEL_MAP:     /app/artifacts/v2/label_map.json
+      MEDXAI_CALIBRATION:   /app/artifacts/calibration.json
+      MEDXAI_THRESHOLDS:    /app/artifacts/thresholds.json
+      MEDXAI_ARCH:          ${MEDXAI_ARCH:-efficientnet_b3}
+      MEDXAI_IMAGE_SIZE:    ${MEDXAI_IMAGE_SIZE:-320}
+      MEDXAI_MODEL_VERSION: ${MEDXAI_MODEL_VERSION:-v2-efficientnet-b3-320}
+      MEDXAI_ADMIN_SECRET:  ${MEDXAI_ADMIN_SECRET:-}
+      MEDXAI_AUDIT_PATH:    /app/artifacts/audit.jsonl
+      MEDXAI_PRIMARY_MODEL:        ${MEDXAI_PRIMARY_MODEL:-txrv}
+      MEDXAI_MODEL_VERSION:        ${MEDXAI_MODEL_VERSION:-txrv-densenet121-18class}
+      MEDXAI_OOD_ENABLED:          ${MEDXAI_OOD_ENABLED:-true}
+      MEDXAI_LOCALIZATION_ENABLED: ${MEDXAI_LOCALIZATION_ENABLED:-true}
+      MEDXAI_CLAHE:                ${MEDXAI_CLAHE:-true}
+      DATABASE_URL:         postgresql://${POSTGRES_USER:-medxai}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-medxai}
+      REDIS_URL:            redis://redis:6379/0
+      JWT_SECRET_KEY:       ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
+      COOKIE_SECURE:        ${COOKIE_SECURE:-true}
+      WEB_CONCURRENCY:      ${WEB_CONCURRENCY:-2}
+    volumes:
+      - ../artifacts:/app/artifacts:rw
+      - medxai_audit:/app/artifacts/audit_rw
+    command: >
+      gunicorn src.serve.app:app
+        -c deployment/gunicorn.conf.py
+        -k uvicorn.workers.UvicornWorker
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - medxai_net
+
+  # ── Postgres ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: medxai_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:-medxai}
+      POSTGRES_USER:     ${POSTGRES_USER:-medxai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - medxai_pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-medxai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - medxai_net
+
+  # ── Redis ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: medxai_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+        --save ""
+        --appendonly no
+        --maxmemory 256mb
+        --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - medxai_net
+
+volumes:
+  medxai_pgdata:
+  medxai_audit:
+
+networks:
+  medxai_net:
+    driver: bridge

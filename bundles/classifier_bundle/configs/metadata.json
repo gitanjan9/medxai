@@ -1,0 +1,40 @@
+{
+  "schema": "https://github.com/Project-MONAI/MONAI-extra-test-data/releases/download/0.8.1/meta_schema_20220324.json",
+  "version": "0.1.0",
+  "changelog": {
+    "0.1.0": "Day 1 – initial bundle scaffold"
+  },
+  "monai_version": "1.3.0",
+  "pytorch_version": "2.1.0",
+  "numpy_version": "1.24.0",
+  "name": "mimic_cxr_classifier",
+  "task": "classification",
+  "medical_specialty": "radiology",
+  "image_classes": "Chest X-ray (grayscale)",
+  "target_classes": "17-class impression classification",
+  "description": "MONAI Bundle-compatible chest X-ray classifier for MIMIC-CXR.",
+  "authors": "MedicalXAI Team",
+  "copyright": "Apache-2.0",
+  "data_source": "MIMIC-CXR (PhysioNet)",
+  "network_data_format": {
+    "inputs": {
+      "image": {
+        "type": "image",
+        "format": "grayscale",
+        "modality": "X-ray",
+        "num_channels": 1,
+        "spatial_shape": [224, 224],
+        "dtype": "float32",
+        "value_range": [0, 1]
+      }
+    },
+    "outputs": {
+      "pred": {
+        "type": "classification",
+        "format": "softmax",
+        "num_channels": 17,
+        "dtype": "float32"
+      }
+    }
+  }
+}

@@ -1,0 +1,106 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# MedicalXAI – Render.com monorepo deploy config
+#
+# Deploy:
+#   1. Push repo to GitHub / GitLab
+#   2. Connect repo in Render dashboard → "New Blueprint"
+#   3. Render detects this file and creates all services automatically
+#
+# Required env vars (set in Render dashboard → Environment):
+#   JWT_SECRET_KEY, POSTGRES_PASSWORD
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── Backend API ─────────────────────────────────────────────────────────────
+  - type: web
+    name: medicalxai-api
+    runtime: docker
+    dockerfilePath: ./deployment/Dockerfile.api
+    dockerContext: .
+    plan: standard          # 2 vCPU, 4 GB RAM — minimum for PyTorch
+    region: oregon
+    healthCheckPath: /health
+    disk:
+      name: medxai-artifacts
+      mountPath: /app/artifacts
+      sizeGB: 10
+    envVars:
+      - key: MEDXAI_ARCH
+        value: efficientnet_b3
+      - key: MEDXAI_IMAGE_SIZE
+        value: "320"
+      - key: MEDXAI_PRIMARY_MODEL
+        value: txrv
+      - key: MEDXAI_MODEL_VERSION
+        value: txrv-densenet121-18class
+      - key: MEDXAI_OOD_ENABLED
+        value: "true"
+      - key: MEDXAI_LOCALIZATION_ENABLED
+        value: "true"
+      - key: MEDXAI_CLAHE
+        value: "true"
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAMESITE
+        value: lax
+      - key: WEB_CONCURRENCY
+        value: "1"           # single worker on Render standard (RAM-constrained)
+      - key: JWT_SECRET_KEY
+        sync: false           # set manually in dashboard — never commit
+      - key: DATABASE_URL
+        fromDatabase:
+          name: medicalxai-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: medicalxai-redis
+          type: redis
+          property: connectionString
+      - key: MEDXAI_ADMIN_SECRET
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: "3.12"
+
+  # ── Frontend Static Site ─────────────────────────────────────────────────────
+  - type: web
+    name: medicalxai-frontend
+    runtime: static
+    buildCommand: "cd frontend && npm ci && npm run build"
+    envVars:
+      - key: VITE_API_URL
+        value: https://medicalxai-api.onrender.com
+    staticPublishPath: ./frontend/dist
+    pullRequestPreviewsEnabled: true
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Cache-Control
+        value: "no-cache"
+      - path: /assets/*
+        name: Cache-Control
+        value: "public, max-age=31536000, immutable"
+    routes:
+      - type: rewrite
+        source: /v1/*
+        destination: https://medicalxai-api.onrender.com/v1/:splat
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+# ── Databases ───────────────────────────────────────────────────────────────
+databases:
+  - name: medicalxai-postgres
+    databaseName: medxai
+    user: medxai
+    plan: starter             # upgrade to standard for production
+    region: oregon
+    postgresMajorVersion: "16"
+
+# ── Redis ──────────────────────────────────────────────────────────────────
+# Render managed Redis (add manually in dashboard → "New Redis")
+# Name it: medicalxai-redis

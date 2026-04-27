@@ -1,0 +1,65 @@
+[
+  {
+    "model_name": "efficientnet_b3_v3_multilabel",
+    "architecture": "efficientnet_b3",
+    "dataset": "MIMIC-CXR (v3 NLP labels, 15 classes)",
+    "num_classes": 15,
+    "image_size": 320,
+    "checkpoint_path": "artifacts/v3/checkpoints",
+    "training_config": "configs/train_v3.yaml",
+    "training_date": null,
+    "tag": "candidate",
+    "label_cols": [
+      "Atelectasis", "Cardiomegaly", "Consolidation", "Edema",
+      "Effusion", "Emphysema", "Fibrosis", "Infiltration",
+      "Mass", "No Finding", "Nodule", "Pleural Thickening",
+      "Pneumonia", "Pneumothorax", "Hernia"
+    ],
+    "metrics": {
+      "source": "internal_val",
+      "macro_auroc": null,
+      "macro_auprc": null,
+      "macro_ece": null
+    },
+    "calibration": {
+      "method": "temperature",
+      "temperature": null,
+      "calibration_path": "artifacts/calibration.json"
+    },
+    "threshold_version": null,
+    "thresholds_path": null,
+    "notes": "v3 NLP multi-label training — candidate model, not yet validated externally."
+  },
+  {
+    "model_name": "txrv_densenet121_all",
+    "architecture": "torchxrayvision_densenet121",
+    "dataset": "MIMIC-CXR + CheXpert + NIH ChestX-ray14 + PadChest (~500k images)",
+    "num_classes": 18,
+    "image_size": 224,
+    "checkpoint_path": "torchxrayvision:densenet121-res224-all",
+    "training_config": null,
+    "training_date": "2020-2022",
+    "tag": "production",
+    "label_cols": [
+      "Atelectasis", "Cardiomegaly", "Consolidation", "Edema",
+      "Effusion", "Emphysema", "Fibrosis", "Hernia",
+      "Infiltration", "Mass", "Nodule", "Pleural Thickening",
+      "Pneumonia", "Pneumothorax", "Enlarged Cardiomediastinum",
+      "Fracture", "Lung Lesion", "Lung Opacity"
+    ],
+    "metrics": {
+      "source": "torchxrayvision_paper",
+      "macro_auroc": 0.841,
+      "macro_auprc": null,
+      "macro_ece": null
+    },
+    "calibration": {
+      "method": "none",
+      "temperature": 1.0,
+      "calibration_path": null
+    },
+    "threshold_version": "txrv_densenet121_class_thresholds_v1",
+    "thresholds_path": "src/config/txrv_thresholds.py",
+    "notes": "Primary production model. Pre-trained; no local fine-tuning."
+  }
+]

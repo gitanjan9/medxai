@@ -1,0 +1,81 @@
+experiment:
+  name: mimic_cxr_classifier_day2
+  seed: 42
+  output_dir: artifacts
+
+data:
+  mode: image                    # "image" | "text" | "multimodal"
+  train_path: /Users/gitanjanganai/Downloads/mimic_cxr_processed.csv
+  val_path: artifacts/val_split.csv   # persisted 15% stratified split
+  test_path: artifacts/val_split.csv  # same file; swap for a true hold-out later
+  val_split: 0.15               # used when val_path is null
+  image_col: image               # column with inline bytes or file paths
+  label_col: impression          # target column
+  text_col: findings             # optional auxiliary text
+  patient_id_col: null
+  image_size: [224, 224]
+  num_workers: 0   # 0 = main-process loading; safe on macOS MPS
+  pin_memory: true
+  label_mapping_path: artifacts/label_map.json  # rebuilt with merge if class_merge_map_path is set
+  label_map_csv: null
+  class_merge_map_path: artifacts/class_merge_map.json  # collapses 16 → 5 classes
+
+model:
+  architecture: densenet121      # densenet121 | efficientnet_b0 | resnet50
+  spatial_dims: 2
+  in_channels: 1
+  num_classes: 5   # updated by merge: 16 → 5 classes
+  pretrained: true
+  dropout_rate: 0.3
+  freeze_backbone: false
+
+training:
+  epochs: 50
+  batch_size: 16
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-5
+  use_amp: true
+  grad_clip_norm: 1.0
+  class_balance_strategy: weighted_sampler  # weighted_loss | weighted_sampler | focal
+  freeze_epochs: 5   # train head-only for 5 epochs, then unfreeze backbone
+
+early_stopping:
+  enabled: true
+  patience: 7
+  monitor: val_auroc_macro
+  mode: max
+  min_delta: 1.0e-4
+
+optimizer:
+  name: adamw
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+  momentum: 0.9
+
+scheduler:
+  name: cosine_annealing_warm_restarts
+  T_0: 10
+  T_mult: 2
+  T_max: 50
+  eta_min: 1.0e-7
+  step_size: 10
+  gamma: 0.1
+
+checkpoint:
+  dir: artifacts/checkpoints
+  save_top_k: 3
+  monitor: val_auroc_macro
+  mode: max
+  filename_template: "epoch={epoch:03d}_auroc={val_auroc_macro:.4f}"
+
+mlflow:
+  tracking_uri: sqlite:///mlruns/mlflow.db
+  experiment_name: mimic_cxr_day1
+  run_name: null
+  log_model_artifact: true
+  artifact_path: model
+
+bundle:
+  name: mimic_cxr_classifier
+  bundle_root: bundles/classifier_bundle
+  version: "0.1.0"
