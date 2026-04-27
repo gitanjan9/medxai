@@ -54,6 +54,7 @@ function authHeaders(extra?: HeadersInit): Record<string, string> {
     ...(extra as Record<string, string>),
   };
   if (_accessToken) h["Authorization"] = `Bearer ${_accessToken}`;
+  if (BASE.includes("ngrok")) h["ngrok-skip-browser-warning"] = "true";
   return h;
 }
 
