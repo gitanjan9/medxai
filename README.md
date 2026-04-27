@@ -1,3 +1,13 @@
+---
+title: MedXAI API
+emoji: 🩺
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # MedicalXAI – Day 1: Training Pipeline
 
 Production-ready chest X-ray classification system built on **MONAI Bundle-compatible** design.
