@@ -1,5 +1,9 @@
 {
   "rewrites": [
+    {
+      "source": "/v1/:path*",
+      "destination": "https://88bd-2401-4900-1cb9-5f1-91d4-e957-64af-84e5.ngrok-free.app/v1/:path*"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
