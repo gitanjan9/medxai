@@ -195,6 +195,10 @@ async def predict(
         warnings=warnings,
     )
 
+    # Cache image to disk BEFORE DB save — ensures file exists if process is killed
+    # between the two operations (disk write is idempotent and safe to re-run)
+    _cache_image(data)
+
     db_id = save_prediction(
         request_id=request_id,
         user_id=user_id,
@@ -205,9 +209,6 @@ async def predict(
         decision=primary.decision,
         full_result=response_data.model_dump(),
     )
-
-    # Cache image to disk so retraining can use it
-    _cache_image(data)
 
     # Attach db_id so frontend can link the result to the DB record for feedback
     response_data.db_id = db_id

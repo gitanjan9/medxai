@@ -30,6 +30,12 @@ from src.serve.services.pleural_analyzer import PleuralFeatures
 _THRESHOLD_VERSION = "txrv_densenet121_class_thresholds_v1"
 _HIGH_CONFIDENCE_MIN = 0.85   # score >= this within a positive → "high" band
 
+# No Finding gate: when the model's own No Finding score is >= this value,
+# only report findings that exceed _HIGH_CONFIDENCE_MIN (very strong signal).
+# This uses the model's own normality prediction to suppress false positives
+# on near-normal CXRs without touching any per-class thresholds.
+_NO_FINDING_GATE = 0.50
+
 _RESPIRATORY_CLUSTER = frozenset([
     "Pneumonia", "Infiltration", "Lung Opacity",
     "Consolidation", "Edema", "Atelectasis",
@@ -38,10 +44,27 @@ _CLUSTER_OVERRIDE_MIN = 3   # 3+ respiratory classes firing → spread check byp
 
 
 _PTX_RESTORE_THRESHOLD   = 0.35   # ptx_evidence >= this → restore PTX score
+_PTX_BASE_MIN            = 0.42   # base model score must reach this before pleural boost applies
+_PTX_NF_SUPPRESS         = 0.35   # no_finding_score >= this → suppress PTX (mutual exclusion)
 _EMPH_BOOST_THRESHOLD    = 0.55   # emphysema_evidence >= this → boost Emphysema
 _BULLOUS_BOOST_THRESHOLD = 0.45   # bullous_evidence >= this → flag Bullous
+_BULLOUS_EMPH_BOOST      = 0.05   # added to Emphysema score when bullous pattern detected
 _EMPH_BOOST              = 0.08   # added to Emphysema score when hyperinflation confirmed
 _PTX_RESTORE             = 0.12   # added back to PTX score when pleural line confirmed
+
+
+def _keep_finding(
+    name: str,
+    score: float,
+    ptx_suppressed: bool,
+    no_finding_gate_active: bool,
+) -> bool:
+    """Return False when a finding should be suppressed by normality gates."""
+    if name == "Pneumothorax" and ptx_suppressed:
+        return False
+    if no_finding_gate_active and score < _HIGH_CONFIDENCE_MIN:
+        return False
+    return True
 
 
 def _apply_pleural_corrections(
@@ -55,14 +78,22 @@ def _apply_pleural_corrections(
     adj = dict(scores)
     log: list[str] = []
 
-    # 1. Pneumothorax: if pleural line + peripheral dark zone → restore score
+    # 1. Pneumothorax: if pleural line + peripheral dark zone → restore score.
+    # Guard: only boost if base model score >= 0.42 (meaningful PTX signal).
+    # This prevents normal lung margins from triggering the restore on near-normal CXRs.
     if feats.ptx_evidence >= _PTX_RESTORE_THRESHOLD:
         old = adj.get("Pneumothorax", 0.0)
-        adj["Pneumothorax"] = min(1.0, old + _PTX_RESTORE * feats.ptx_evidence)
-        log.append(
-            f"Pneumothorax restored {old:.3f}→{adj['Pneumothorax']:.3f} "
-            f"(ptx_evidence={feats.ptx_evidence:.3f})"
-        )
+        if old >= _PTX_BASE_MIN:
+            adj["Pneumothorax"] = min(1.0, old + _PTX_RESTORE * feats.ptx_evidence)
+            log.append(
+                f"Pneumothorax restored {old:.3f}→{adj['Pneumothorax']:.3f} "
+                f"(ptx_evidence={feats.ptx_evidence:.3f})"
+            )
+        else:
+            log.append(
+                f"Pneumothorax boost skipped: base {old:.3f} < {_PTX_BASE_MIN} "
+                f"(ptx_evidence={feats.ptx_evidence:.3f})"
+            )
 
     # 2. Emphysema: flat diaphragm → boost score
     if feats.emphysema_evidence >= _EMPH_BOOST_THRESHOLD:
@@ -78,7 +109,7 @@ def _apply_pleural_corrections(
         feats.ptx_evidence < _PTX_RESTORE_THRESHOLD
     ):
         old = adj.get("Emphysema", 0.0)
-        adj["Emphysema"] = min(1.0, old + 0.05 * feats.bullous_evidence)
+        adj["Emphysema"] = min(1.0, old + _BULLOUS_EMPH_BOOST * feats.bullous_evidence)
         log.append(
             f"Bullous pattern detected (emphysema_evidence={feats.emphysema_evidence:.3f} "
             f"focal_avascular={feats.focal_avascular_score:.3f})"
@@ -108,13 +139,23 @@ def txrv_to_primary_prediction(
     clinical = build_clinical_output(base_scores)
     adj = clinical.adjusted_scores
 
+    no_finding_score = result.scores.get("No Finding", 0.0)
+    no_finding_gate_active = no_finding_score >= _NO_FINDING_GATE
+
+    # PTX anti-correlation: Pneumothorax and No Finding are clinically mutually exclusive.
+    # Suppress PTX from findings when the model assigns any meaningful No Finding score.
+    ptx_suppressed = no_finding_score >= _PTX_NF_SUPPRESS
+
     positive_findings: list[PathologyFinding] = [
         PathologyFinding(name=f.name, score=round(f.adjusted_score, 4))
         for f in clinical.all_positives()
+        if _keep_finding(f.name, f.adjusted_score, ptx_suppressed, no_finding_gate_active)
     ]
     review_findings: list[PathologyFinding] = [
         PathologyFinding(name=f.name, score=round(f.adjusted_score, 4))
         for f in clinical.all_review()
+        if _keep_finding(f.name, f.adjusted_score, ptx_suppressed, no_finding_gate_active)
+        and not no_finding_gate_active
     ]
 
     non_nf = sorted(

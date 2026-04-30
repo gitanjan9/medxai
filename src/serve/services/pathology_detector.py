@@ -60,11 +60,14 @@ class XrvPathologyDetector:
     def __init__(self) -> None:
         self._model = None
         self._transforms = None
+        self._clahe = None
         self._device = torch.device("cpu")
 
     def load(self) -> None:
+        import cv2
         import torchxrayvision as xrv
         from pathlib import Path
+        self._clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         logger.info("Loading torchxrayvision model: %s", _XRV_MODEL_ID)
         self._model = xrv.models.DenseNet(weights=_XRV_MODEL_ID)
 
@@ -88,12 +91,14 @@ class XrvPathologyDetector:
         if self._model is None:
             raise RuntimeError("XrvPathologyDetector.load() was not called")
 
-        import torchxrayvision as xrv
         import skimage.transform
 
-        # Load as grayscale, resize to 224x224
+        # Load as grayscale
         image = Image.open(io.BytesIO(image_bytes)).convert("L")
-        img_np = np.array(image).astype(np.float32)
+        img_np = np.array(image).astype(np.uint8)
+
+        # Apply CLAHE to match calibration preprocessing (clipLimit=2.0, tile=8×8)
+        img_np = self._clahe.apply(img_np).astype(np.float32)
 
         # torchxrayvision expects values in [-1024, 1024]
         img_np = (img_np / 255.0) * 2048 - 1024

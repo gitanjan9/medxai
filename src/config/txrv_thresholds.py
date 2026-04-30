@@ -33,7 +33,7 @@ TXRV_THRESHOLDS: dict[str, float] = {
     "Pleural Other":                 0.7500,
     "Pleural Thickening":            0.6500,
     "Pneumonia":                     0.6400,
-    "Pneumothorax":                  0.5500,  # clamped at safety ceiling 0.55
+    "Pneumothorax":                  0.5500,
     "Support Devices":               0.8000,
 }
 
