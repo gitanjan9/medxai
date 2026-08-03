@@ -34,9 +34,11 @@ RUN pip install --no-cache-dir --upgrade pip \
 COPY src/ ./src/
 COPY deployment/gunicorn.conf.py ./deployment/
 
-# ── Artifacts (mounted at runtime; baked in for self-contained image) ──────────
-# To bake artifacts into the image, uncomment:
-# COPY artifacts/ ./artifacts/
+# ── Artifacts (essential config files for model inference) ────────────────────
+COPY artifacts/calibration.json ./artifacts/
+COPY artifacts/thresholds.json ./artifacts/
+COPY artifacts/label_map.json ./artifacts/
+COPY artifacts/v2/ ./artifacts/v2/
 
 # ── Permissions ───────────────────────────────────────────────────────────────
 RUN chown -R medxai:medxai /app
