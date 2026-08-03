@@ -1,7 +1,8 @@
 {
   "build": {
     "builder": "DOCKERFILE",
-    "dockerfilePath": "deployment/Dockerfile.api"
+    "dockerfilePath": "deployment/Dockerfile.api",
+    "dockerContext": "."
   },
   "deploy": {
     "startCommand": "gunicorn src.serve.app:app -c deployment/gunicorn.conf.py -k uvicorn.workers.UvicornWorker",
