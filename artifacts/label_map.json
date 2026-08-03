@@ -1,0 +1,17 @@
+{
+  "str_to_idx": {
+    "no_acute_cardiopulmonary": 0,
+    "no_acute_intrathoracic": 1,
+    "no_change_stable": 2,
+    "no_pneumonia": 3,
+    "no_pneumothorax": 4
+  },
+  "idx_to_str": {
+    "0": "no_acute_cardiopulmonary",
+    "1": "no_acute_intrathoracic",
+    "2": "no_change_stable",
+    "3": "no_pneumonia",
+    "4": "no_pneumothorax"
+  },
+  "num_classes": 5
+}

@@ -1,0 +1,7 @@
+{
+  "method": "temperature_scaling",
+  "temperature": 1.352051854133606,
+  "num_samples": 285,
+  "num_classes": 5,
+  "val_csv": "artifacts/val_split.csv"
+}
