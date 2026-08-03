@@ -6,8 +6,6 @@
   },
   "deploy": {
     "startCommand": "gunicorn src.serve.app:app -c deployment/gunicorn.conf.py -k uvicorn.workers.UvicornWorker",
-    "healthcheckPath": "/health",
-    "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
