@@ -45,8 +45,20 @@ services:
         value: lax
       - key: WEB_CONCURRENCY
         value: "1"           # single worker on Render standard (RAM-constrained)
+      - key: MEDXAI_OPEN_REGISTRATION
+        value: "false"       # disable public registration in production
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: "7"
+      - key: CORS_ORIGINS
+        value: https://medicalxai-frontend.onrender.com
       - key: JWT_SECRET_KEY
         sync: false           # set manually in dashboard — never commit
+      - key: MEDXAI_ADMIN_EMAIL
+        sync: false           # set manually in dashboard
+      - key: MEDXAI_ADMIN_PASSWORD
+        sync: false           # set manually in dashboard
       - key: DATABASE_URL
         fromDatabase:
           name: medicalxai-postgres
