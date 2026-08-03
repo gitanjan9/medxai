@@ -153,9 +153,21 @@ _CORS_ORIGINS = [
     if o.strip()
 ]
 
+# Allow all Vercel preview deployments (*.vercel.app)
+def _cors_origin_regex():
+    import re
+    patterns = []
+    for origin in _CORS_ORIGINS:
+        if "vercel.app" in origin:
+            # Allow all subdomains of vercel.app
+            patterns.append(r"https://.*\.vercel\.app")
+        else:
+            patterns.append(re.escape(origin))
+    return "|".join(patterns) if patterns else None
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_CORS_ORIGINS,
+    allow_origin_regex=_cors_origin_regex(),
     allow_credentials=True,           # required for HttpOnly cookie passthrough
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
