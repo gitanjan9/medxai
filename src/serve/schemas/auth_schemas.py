@@ -1,7 +1,8 @@
 """Pydantic schemas for authentication endpoints."""
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr, field_validator
+import re
+from pydantic import BaseModel, field_validator
 
 
 class LoginRequest(BaseModel):
@@ -17,10 +18,19 @@ class LoginRequest(BaseModel):
 
 
 class RegisterRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
     name: str = ""
     role: str = "user"
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        # Basic email validation without email-validator dependency
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, v):
+            raise ValueError("Invalid email format")
+        return v.lower()
 
     @field_validator("password")
     @classmethod
