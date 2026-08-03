@@ -23,6 +23,7 @@ RUN groupadd --gid 1001 medxai \
 WORKDIR /app
 
 # ── Python deps (installed before copying source for layer caching) ────────────
+# Force rebuild: 2026-08-03-18:23
 COPY requirements.txt ./
 RUN pip install --no-cache-dir --upgrade pip \
  && pip install --no-cache-dir \
